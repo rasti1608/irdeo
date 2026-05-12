@@ -1,8 +1,8 @@
-# IRONRUST VIDEO STUDIO — Business Requirements Document
-**Version:** 1.0
+# IRdeo — Business Requirements Document
+**Version:** 1.1
 **Last updated:** May 11, 2026
 **Status:** LIVING DOCUMENT — comprehensive formal version
-**Companion documents:** `IRONRUST_KNOWLEDGE_BASE.md` (v1.0+)
+**Companion documents:** `IRdeo_Knowledge_Base.md` (v1.1+)
 
 ### Versioning Convention
 - **v1.0** — first complete formal version
@@ -10,6 +10,7 @@
 - **v2.0** — major restructure or fundamental approach change
 
 ### Changelog
+- **v1.1 (May 11, 2026)** — Product renamed from "IronRUST Video Studio" to **IRdeo**. Coined name preserving the "IR" origin (IronRUST) with the "deo" suffix (audio/video/media family). All in-text references updated. Companion document filename reference updated.
 - **v1.0 (May 11, 2026)** — First complete formal version. Comprehensive BRD covering MVP and SaaS as two distinct phases. Built on top of Knowledge Base v1.0.
 
 ---
@@ -17,7 +18,7 @@
 ## 1. Document Overview
 
 ### 1.1 Purpose
-This document defines the business requirements for **IronRUST Video Studio** — an AI-assisted music video generation pipeline. It establishes the problem being solved, the users being served, the scope of the solution, detailed user stories, functional and non-functional requirements, success metrics, constraints, risks, and the two-phase roadmap (MVP → SaaS).
+This document defines the business requirements for **IRdeo** — an AI-assisted music video generation pipeline. It establishes the problem being solved, the users being served, the scope of the solution, detailed user stories, functional and non-functional requirements, success metrics, constraints, risks, and the two-phase roadmap (MVP → SaaS).
 
 This BRD is intended to be the **source of truth for what the product does and for whom**. It precedes the Architecture Document (what the product is technically composed of) and the Phase Specs (how each component works in detail).
 
@@ -27,7 +28,7 @@ This BRD is intended to be the **source of truth for what the product does and f
 - **Tertiary:** Potential SaaS investors or partners (relevant in Phase 2)
 
 ### 1.3 Related Documents
-- **Knowledge Base (`IRONRUST_KNOWLEDGE_BASE.md`)** — Domain expertise loaded into the conversation LLM at runtime. Defines HOW the AI Director thinks. This BRD references it heavily but does not duplicate it.
+- **Knowledge Base (`IRdeo_Knowledge_Base.md`)** — Domain expertise loaded into the conversation LLM at runtime. Defines HOW the AI Director thinks. This BRD references it heavily but does not duplicate it.
 - **Architecture Document** — To be written. Defines technical components, data flow, deployment topology.
 - **Phase Specs** — To be written. One per phase of the conversation flow (Intake, Analysis, Collaboration, Chunking, Generation, Output).
 - **API Integration Spec** — To be written. Veo, Kling, Whisper, Claude — what we use, costs, limits, fallbacks.
@@ -48,7 +49,7 @@ AI music video generation today is a two-tier market with a missing middle:
 There is no tool that combines **smart prompt-engineering automation** with **full creative control and raw output**, priced for individual creators.
 
 ### 2.2 The Solution
-IronRUST Video Studio is a pipeline that:
+IRdeo is a pipeline that:
 1. **Analyzes** a song (audio, lyrics, structure, vocals, energy)
 2. **Collaborates** with the user via an intelligent conversation that asks the right questions in the right order
 3. **Generates** engine-ready video prompts in the background — chunk by chunk, segment by segment, continuity-aware
@@ -79,7 +80,7 @@ The realization in Session 07: AIVideo.com is a thin wrapper around the same eng
 | Pro creators | Manual API + scripting + editing software | Hours of tedious orchestration |
 | **Power-user creators who know editing** | **None** | **No tool combines smart automation with raw output and full control** |
 
-IronRUST Video Studio targets the third segment — initially with an MVP for the single power user (Rasti), then scaling to others like him.
+IRdeo targets the third segment — initially with an MVP for the single power user (Rasti), then scaling to others like him.
 
 ### 3.3 Strategic Opportunity
 - **AI video generation quality is improving rapidly.** Veo 3.1, Kling O3 Pro, Runway Gen-3 all capable of cinematic output today.
@@ -722,7 +723,7 @@ This BRD is a working document. Approval and sign-off:
 ## 17. Provenance
 
 This BRD was derived from:
-- Knowledge Base v1.0 (`IRONRUST_KNOWLEDGE_BASE.md`) — the canonical source of domain rules
+- Knowledge Base v1.1 (`IRdeo_Knowledge_Base.md`) — the canonical source of domain rules
 - Session 07 (`Manufacturing consent media song`) — original tool concept and architectural realizations
 - Session 07 Handoff Document (`IRONRUST_VIDEO_STUDIO_HANDOFF.md`) — first product spec draft
 - Sessions 04, 05, 06 — manual video production experience

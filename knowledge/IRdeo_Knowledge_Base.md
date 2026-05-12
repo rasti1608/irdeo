@@ -1,5 +1,5 @@
-# IRONRUST VIDEO STUDIO — Knowledge Base
-**Version:** 1.0
+# IRdeo — Knowledge Base
+**Version:** 1.1
 **Last updated:** May 11, 2026
 **Status:** LIVING DOCUMENT — extracted from sessions 04, 05, 06, 07 and ongoing
 
@@ -9,6 +9,7 @@
 - **v2.0** — major restructure or fundamental approach change
 
 ### Changelog
+- **v1.1 (May 11, 2026)** — Product renamed from "IronRUST Video Studio" to **IRdeo**. Coined name preserving the "IR" origin (IronRUST) with the "deo" suffix (audio/video/media family). No content changes beyond naming.
 - **v1.0 (May 11, 2026)** — Renumbered from v0.3 to reflect that the document is a complete formal version, not a tentative pre-release. No content changes from v0.3.
 - **v0.3 (May 11, 2026, pre-v1.0)** — Added "KB Rules Are Defaults, Not Absolutes" principle to Section 0 (user override handling). Added Vocal Type Vocabulary to Section 2 (canonical sub-marker list). Added Unknown Genre Handling to Section 7 as new 7.3 (session-level temporary playbook flow); old 7.3 placeholder renumbered to 7.4.
 - **v0.2 (May 11, 2026, pre-v1.0)** — Added Runtime Context Architecture (Section 1) and The Timestamps File spec (Section 2). Updated Section 4 (Question Hierarchy) to explicitly tie user-provided lyrics to finalized timestamps. Updated Section 13 (Conversation Flow Pattern) to make timestamps file generation and finalization explicit phases. All subsequent sections renumbered.
