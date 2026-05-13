@@ -1,8 +1,8 @@
 # IRdeo — Business Requirements Document
-**Version:** 1.1
+**Version:** 1.3
 **Last updated:** May 11, 2026
 **Status:** LIVING DOCUMENT — comprehensive formal version
-**Companion documents:** `IRdeo_Knowledge_Base.md` (v1.1+)
+**Companion documents:** `IRdeo_Knowledge_Base.md` (v1.2+)
 
 ### Versioning Convention
 - **v1.0** — first complete formal version
@@ -10,6 +10,8 @@
 - **v2.0** — major restructure or fundamental approach change
 
 ### Changelog
+- **v1.3 (May 11, 2026)** — User interface vision corrected. IRdeo's primary user interface is a **local web UI** (browser-based, served by local Python process), NOT a CLI. CLI is internal implementation/dev tooling, not user-facing. Phase 2 SaaS = same web UI, hosted instead of local. Updates: Section 1.3 companion docs (CLI Spec → UI Spec), Section 2.2 (phasing strategy clarified), Section 6.1 (CLI Interface → User Interface), Section 6.2 (SaaS UI clarified as hosted version of same UI), Section 6.4 (deferred items corrected), Section 7 (US-5 revised + new US-5a, US-5b for local web UI), Section 8.11 (FR-11 block rewritten), Section 12.2 (Python dependencies updated with FastAPI/Uvicorn), Section 14.1 (roadmap milestones revised to include web UI build).
+- **v1.2 (May 11, 2026)** — Lip sync added as mandatory MVP capability for performer chunks. fal.ai locked as unified generation gateway (video + lip sync, single API key, pay-per-use). Updates: Section 6.1 scope (lip sync added to Video Generation), Section 7 user stories (take selection + automatic lip sync added), Section 8 functional requirements (new FR-8.X entries for lip sync provider integration and take selection workflow), Section 9.6 cost ceiling adjusted to account for lip sync costs, Section 12.1 dependencies (fal.ai added, Sync.so as model provider via fal.ai), Section 13 risks (lip sync quality variance row added), Section 15 open questions revised.
 - **v1.1 (May 11, 2026)** — Product renamed from "IronRUST Video Studio" to **IRdeo**. Coined name preserving the "IR" origin (IronRUST) with the "deo" suffix (audio/video/media family). All in-text references updated. Companion document filename reference updated.
 - **v1.0 (May 11, 2026)** — First complete formal version. Comprehensive BRD covering MVP and SaaS as two distinct phases. Built on top of Knowledge Base v1.0.
 
@@ -33,7 +35,7 @@ This BRD is intended to be the **source of truth for what the product does and f
 - **Phase Specs** — To be written. One per phase of the conversation flow (Intake, Analysis, Collaboration, Chunking, Generation, Output).
 - **API Integration Spec** — To be written. Veo, Kling, Whisper, Claude — what we use, costs, limits, fallbacks.
 - **Data Model Spec** — To be written. JSON manifests, song manifest, chunk manifest, segment manifest.
-- **CLI Spec** — To be written. Commands, flags, user-facing workflow.
+- **UI Spec** — To be written. Local web UI design, page structure, chat panel, take selection, file upload, project management, progress visualization. The user-facing interface specification.
 - **Output Spec (Filmora)** — To be written. Filmora `.wfp` investigation + fallback formats.
 
 ---
@@ -59,10 +61,10 @@ IRdeo is a pipeline that:
 The user's creative control is preserved. The tedious work (timestamping, prompt-writing, chunk management, API orchestration, file organization) is automated. Cost per video is 80–95% lower than consumer tools.
 
 ### 2.3 Phasing Strategy
-- **Phase 1 — MVP (2026):** Build for one user (Rasti) on local CLI, hardcoded to his workflow patterns. Validate the thesis on his remaining IronRUST tracks and Slovak album work.
-- **Phase 2 — SaaS (TBD, when MVP is proven):** Wrap the same engine in a web UI, add multi-tenancy, authentication, billing, cloud storage. Target other power-user creators who know editing but don't want to manage CLI/APIs.
+- **Phase 1 — MVP (2026):** Build for one user (Rasti) running locally. Local web UI in the browser (FastAPI backend serving a simple HTML/JS frontend on localhost), connected to fal.ai and other APIs. Validate the thesis on his remaining IronRUST tracks and Slovak album work.
+- **Phase 2 — SaaS (TBD, when MVP is proven):** Same web UI, hosted in the cloud instead of local. Add multi-tenancy, authentication, billing, cloud storage. Target other power-user creators who know editing but want a hassle-free hosted experience.
 
-The core engine (conversation brain + Knowledge Base + video generation pipeline) is identical between phases. SaaS adds infrastructure, not features.
+The core engine (conversation brain + Knowledge Base + video generation pipeline) AND the user interface are identical between phases. SaaS adds infrastructure (cloud hosting, multi-tenancy, billing), not new features.
 
 ---
 
@@ -116,7 +118,7 @@ IRdeo targets the third segment — initially with an MVP for the single power u
 
 ### 5.1 Phase 1 Persona: Rasti (Primary MVP User)
 - **Background:** Slovak-American music creator, early 50s. Eastern European immigrant perspective informing political/systemic critique work.
-- **Skills:** Technical enough for CLI tools. Experienced in Filmora, Suno, AIVideo.com, manual prompt engineering, Python scripting at intermediate level. Deep editing skill.
+- **Skills:** Experienced in Filmora, Suno, AIVideo.com, manual prompt engineering, Python scripting at intermediate level. Comfortable running local Python tools that open a browser interface. Deep editing skill.
 - **Projects:** IronRUST political rap album ("The System Burns" — 13 tracks). Slovak atmospheric ballad album under NoNameDOG AI Studio. Personal Slovak gift songs for friends.
 - **Tools in use:** Suno (vocals/music), AIVideo.com (current video), Kling models, Filmora (editing), ChatGPT (image generation), Whisper API (transcription), librosa (audio analysis), Python/docx for documentation.
 - **Workflow:** Pick Eminem song as cadence template → write lyrics matching that cadence → research extensively via political podcasts → generate vocals with Suno → manually build music video via AIVideo.com → assemble in Filmora → release on YouTube.
@@ -200,11 +202,18 @@ The tool is NOT designed for:
 - Audio-to-visual translation vocabulary per KB Section 10
 
 **Video Generation:**
-- Direct API integration with at least one video generation provider (Veo or Kling, to be chosen based on availability/cost)
+- API integration via **fal.ai** as the unified generation gateway (single API key for video + lip sync)
+- Access to multiple video models through fal.ai: Kling 3.0 Motion Control Pro, Kling O3 Pro, Veo 3.x (visuals only — Veo's native audio is discarded), and others as the catalog grows
 - Per-chunk model selection (different chunks can use different models)
-- Multiple takes per chunk (configurable, default 2–3)
+- Multiple takes per chunk (configurable, default 2–3) — silent video
 - Retry logic on API failure
 - Generation progress tracking
+
+**Take Selection & Lip Sync:**
+- Take selection UI/workflow — present takes per performer chunk to user, user picks the winner
+- Automatic lip sync (mandatory, no opt-in) on performer chunks via fal.ai → Sync.so lipsync-2 model
+- Vocal track isolation (where possible) before lip sync for best results
+- Non-performer chunks skip lip sync entirely
 
 **Output:**
 - Organized output directory per song
@@ -218,10 +227,19 @@ The tool is NOT designed for:
 - Filmora project file generation (or fallback interchange format if `.wfp` not crackable)
 - Master `.docx` document with Suno prompt, production notes, album context, lyrics, video prompts, Whisper corrections
 
-**CLI Interface:**
-- Commands: `new`, `analyze`, `chunks`, `generate`, `regenerate`, `export`, `preview`, `status`
-- Configuration file for API keys and defaults
-- Windows-first (Rasti's primary OS)
+**User Interface:**
+- Local web UI served by a FastAPI Python backend running on the user's machine
+- User opens browser to `localhost:<port>` to interact with the tool
+- Chat-style interface as the primary interaction model (AI Director conversation, modeled on the PASC chatbot pattern Rasti previously built)
+- Voice input via Whisper API (microphone button, speak instead of type)
+- Optional voice output via browser TTS (AI Director speaks responses)
+- File upload (MP3, lyrics, reference photos) via drag-and-drop or file picker
+- Project sidebar / dashboard — list of song projects, switch between them, resume work
+- Take selection UI — visual grid of generated takes per performer chunk, click to select winner
+- Real-time progress indicators during long-running generation (chunk N of M, segment N of M, take N of M)
+- Inline video/audio playback (preview takes, listen to chunk audio slices)
+- Configuration page for API keys and defaults
+- Windows-first (Rasti's primary OS), but the local web UI runs cross-platform anywhere Python + a browser are available
 
 **Storage:**
 - Local file system
@@ -233,7 +251,7 @@ The tool is NOT designed for:
 Building on the MVP foundation, Phase 2 adds:
 
 **Infrastructure:**
-- Web UI replacing CLI (or supplementing it for power users)
+- Hosted web UI (cloud-served version of the same UI built for MVP — same frontend code, just deployed on cloud infrastructure instead of localhost)
 - Multi-tenant architecture
 - Cloud hosting
 - Cloud storage per user (encrypted at rest)
@@ -283,7 +301,7 @@ Explicit non-goals — these will NOT be built regardless of phase:
 
 These are MVP non-goals that may become SaaS scope:
 
-- Web UI (CLI is MVP)
+- Hosted/cloud web UI (local web UI is MVP, hosted is SaaS)
 - Multi-user / authentication
 - Payment processing
 - Cloud storage
@@ -300,7 +318,7 @@ Stories are grouped by capability area and tagged with phase (MVP / SaaS / BOTH)
 
 ### 7.1 Intake & Setup
 
-**US-1 [MVP]** As Rasti, I want to start a new song project with a single CLI command (`new --song <name>`) so I can begin work without manual folder setup.
+**US-1 [MVP]** As Rasti, I want to start a new song project from the web UI by clicking "New Song" and entering a song name so I can begin work without manual folder setup.
 
 **US-2 [MVP]** As Rasti, I want to provide my MP3, exact lyrics (optional but recommended), and reference photos at project initialization so the tool has everything it needs to start analysis.
 
@@ -308,7 +326,13 @@ Stories are grouped by capability area and tagged with phase (MVP / SaaS / BOTH)
 
 **US-4 [MVP]** As Rasti, I want the tool to explicitly warn me if I skip the exact-lyrics input so I understand the quality tradeoff (Whisper-only timestamps will need significant correction).
 
-**US-5 [SaaS]** As a Pro Creator, I want to start a new project through a web UI by dragging my MP3 file in and filling out a short form so I don't need command-line skills.
+**US-5 [MVP]** As Rasti, I want IRdeo to run as a local web app — I start the tool, it opens my browser to a local URL, and I interact with it through a browser interface (chat, file upload, take selection, progress, etc.) — so the experience feels like a polished web product, not a script.
+
+**US-5a [MVP]** As Rasti, I want to speak to the AI Director via my microphone (Whisper-powered voice input) instead of typing every response so the conversation flows naturally during longer interview sessions.
+
+**US-5b [MVP]** As Rasti, I want optional voice output (browser TTS) so the AI Director can speak responses back to me, allowing hands-free conversation when I'm focused on other tasks.
+
+**US-5c [SaaS]** As a Pro Creator, I want to use the same web UI hosted in the cloud (no installation required) so I can use IRdeo from any computer with a browser.
 
 ### 7.2 Audio Analysis & Timestamps
 
@@ -363,6 +387,14 @@ Stories are grouped by capability area and tagged with phase (MVP / SaaS / BOTH)
 **US-27 [BOTH]** As a user, I want clear progress reporting during generation (e.g., "chunk 3 of 9 — segment 4 of 7 — take 2 of 3") so I know what's happening during long generation runs.
 
 **US-28 [BOTH]** As a user, I want failed API calls to retry automatically (with backoff) and fall back to an alternate provider if available so I'm not blocked by transient failures.
+
+**US-28a [BOTH]** As a user, I want to review all takes for each performer chunk and pick the winning take before lip sync runs so I don't waste API spend on takes I'm going to discard.
+
+**US-28b [BOTH]** As a user, I want lip sync to run automatically on every performer chunk (no toggle, no opt-in) so my performer's mouth always matches the actual song audio — performance without lip sync is broken output.
+
+**US-28c [BOTH]** As a user, I want the tool to skip lip sync entirely on documentary/atmosphere/no-performer chunks so I don't pay for processing that isn't needed.
+
+**US-28d [BOTH]** As a user, I want vocals isolated from the instrumental track before lip sync runs so the lip-sync model gets cleaner input and produces better mouth alignment.
 
 ### 7.6 Output & Handoff
 
@@ -446,13 +478,23 @@ Numbering: **FR-X.Y** where X is the capability area and Y is the requirement nu
 - **FR-7.7** The tool MUST allow user to manually edit generated prompts before generation.
 
 ### 8.8 Video Generation (FR-8.X)
-- **FR-8.1** The tool MUST integrate with at least one video generation API (Veo, Kling, or Runway) at MVP.
+- **FR-8.1** The tool MUST integrate with **fal.ai** as the unified generation API gateway for video generation at MVP. fal.ai provides access to Kling 3.0 Motion Control Pro, Kling O3 Pro, Veo 3.x, and other video models via a single API key.
 - **FR-8.2** The tool MUST support per-chunk model selection.
-- **FR-8.3** The tool MUST support configurable takes per chunk (default 2–3).
+- **FR-8.3** The tool MUST support configurable takes per chunk (default 2–3) — silent video only.
 - **FR-8.4** The tool MUST support regeneration of specific chunks without re-running the full song.
 - **FR-8.5** The tool MUST report generation progress in real time.
 - **FR-8.6** The tool MUST retry failed API calls with exponential backoff (configurable max retries).
-- **FR-8.7** The tool MUST be architected so video API providers can be swapped via a uniform interface.
+- **FR-8.7** The tool MUST be architected so video API providers can be swapped via a uniform interface (avoiding fal.ai lock-in if needed).
+- **FR-8.8** When using video models with native audio generation (e.g., Veo), the tool MUST discard the generated audio and use only the visual track. User-provided audio drives lip sync separately (FR-8.9 block).
+
+### 8.8a Take Selection & Lip Sync (FR-8.X continued)
+- **FR-8.9** The tool MUST present takes for each performer chunk to the user for review and selection BEFORE lip sync runs (cost discipline — avoid lip-syncing discarded takes).
+- **FR-8.10** The tool MAY provide a heuristic-based default-take selection if user opts to skip manual review.
+- **FR-8.11** The tool MUST automatically run lip sync on every performer chunk's winning take. No per-chunk toggle. No opt-in. Performance implies lip sync per KB Section 8.
+- **FR-8.12** The tool MUST integrate lip sync via fal.ai → Sync.so lipsync-2 model (default) with the ability to swap to alternative lip-sync models (Sync.so lipsync-2-pro, sync-3) via configuration.
+- **FR-8.13** The tool MUST skip lip sync entirely on chunks without performer presence (documentary, atmosphere, no-performer).
+- **FR-8.14** The tool SHOULD isolate vocals from the instrumental track before passing audio to the lip-sync model. If a vocals-only stem is provided by the user (typical with Suno output), use it directly.
+- **FR-8.15** The tool MUST output lip-synced video as the final per-chunk artifact for performer chunks — the silent generation is intermediate and not delivered as final output.
 
 ### 8.9 Output (FR-9.X)
 - **FR-9.1** The tool MUST organize output in a predictable directory structure per song (chunks/, reference_images/, prompts/, timestamps file, chunk manifest, generation log).
@@ -468,11 +510,15 @@ Numbering: **FR-X.Y** where X is the capability area and Y is the requirement nu
 - **FR-10.4** The tool MUST acknowledge KB rule overrides explicitly and confirm user intent before proceeding (per KB Section 0).
 - **FR-10.5** The tool MUST log all KB rule overrides for future KB revision analysis.
 
-### 8.11 CLI / UI (FR-11.X)
-- **FR-11.1 [MVP]** The tool MUST provide a CLI with at minimum these commands: `new`, `analyze`, `chunks`, `generate`, `regenerate`, `export`, `preview`, `status`.
-- **FR-11.2 [MVP]** The tool MUST work on Windows (Rasti's primary OS).
-- **FR-11.3 [SaaS]** The tool MUST provide a web UI for all primary user workflows.
-- **FR-11.4 [SaaS]** The tool MUST preserve the CLI as an alternate interface for power users.
+### 8.11 User Interface (FR-11.X)
+- **FR-11.1 [MVP]** The tool MUST provide a local web UI as the primary user interface. The backend runs as a local Python (FastAPI) process; the UI is delivered to the user's default browser at a local URL (e.g., `http://localhost:8000`).
+- **FR-11.2 [MVP]** The local web UI MUST support all primary user workflows: project creation, file upload (MP3, lyrics, reference photos), conversation with the AI Director, Timestamps File review and confirmation, chunk definition, take selection, generation progress monitoring, output review, and access to final deliverables.
+- **FR-11.3 [MVP]** The local web UI MUST support voice input via Whisper API (microphone button, audio capture, transcription, send to AI Director).
+- **FR-11.4 [MVP]** The local web UI SHOULD support voice output via browser TTS as an optional setting.
+- **FR-11.5 [MVP]** The tool MUST work on Windows (Rasti's primary OS) but the local web UI MUST be cross-platform (works wherever Python + a modern browser are available).
+- **FR-11.6 [MVP]** The local web UI MUST support persistent state — closing the browser tab and reopening it MUST resume the user's session without data loss.
+- **FR-11.7 [SaaS]** The same web UI MUST be deployable in a hosted cloud environment for the SaaS phase, with minimal frontend code changes (only the backend hosting and authentication layer differs).
+- **FR-11.8 [MVP — internal]** The tool MAY expose a CLI for advanced power-user batch operations, scripting, and developer/debug workflows. The CLI is NOT the primary user-facing interface and is not required for typical use.
 
 ### 8.12 SaaS-Specific (FR-12.X)
 - **FR-12.1 [SaaS]** The tool MUST support multi-tenant architecture with isolated user data.
@@ -507,7 +553,7 @@ Numbering: **FR-X.Y** where X is the capability area and Y is the requirement nu
 - **NFR-S6 [SaaS]** Payment data MUST never touch the tool's servers (Stripe-hosted checkout).
 
 ### 9.4 Usability
-- **NFR-U1 [MVP]** CLI commands MUST follow consistent naming and flag conventions.
+- **NFR-U1 [MVP]** Local web UI MUST follow consistent design language (clear visual hierarchy, predictable component behavior, sensible defaults).
 - **NFR-U2 [MVP]** Error messages MUST be clear and actionable (not stack traces).
 - **NFR-U3 [MVP]** The tool MUST include built-in `--help` documentation for all commands.
 - **NFR-U4 [SaaS]** The web UI MUST be responsive and work on desktop browsers (Chrome, Firefox, Safari, Edge — last 2 major versions).
@@ -519,7 +565,7 @@ Numbering: **FR-X.Y** where X is the capability area and Y is the requirement nu
 - **NFR-M4** Video generation API providers MUST be swappable without changing core code (uniform interface).
 
 ### 9.6 Cost Efficiency
-- **NFR-C1** Total API cost per full 5-minute song video (analysis + conversation + generation with 3 takes) MUST be under $30 at MVP launch.
+- **NFR-C1** Total API cost per full 5-minute song video (analysis + conversation + video generation with 3 takes + lip sync on performer winning takes) MUST be under $35 at MVP launch. The ~$5 increase from the v1.1 ceiling accounts for added lip sync costs (~$3–5/song typical via fal.ai → Sync.so lipsync-2 at ~60 sec of performer per song).
 - **NFR-C2** The tool MUST display estimated cost before firing generation calls so user can decline if it exceeds their budget.
 - **NFR-C3** The tool MUST not waste API calls on already-generated content (cache and reuse where applicable).
 
@@ -561,7 +607,7 @@ These are speculative until MVP validates and we have real market data.
 - **C2** Whisper produces unreliable output for non-English vocals and over heavy instrumentation. The tool's strategy must account for this (skip-Whisper option, manual timestamping fallback).
 - **C3** Video generation is non-deterministic — same prompt produces different outputs. Multiple takes per chunk are required for cherry-picking.
 - **C4** LLM API context window is 200K tokens (Claude). Long conversations may eventually need summarization.
-- **C5** Rasti's primary OS is Windows. The CLI must work natively on Windows.
+- **C5** Rasti's primary OS is Windows. The local Python backend + web server must work natively on Windows; the browser UI is cross-platform by default.
 - **C6** Filmora is the primary editing tool. `.wfp` format may not be cleanly crackable; fallback interchange formats may be required.
 
 ### 11.2 Business Constraints
@@ -586,7 +632,7 @@ These are speculative until MVP validates and we have real market data.
 **Required for MVP:**
 - **Anthropic Claude API** (Opus 4.7 or equivalent) — Conversation LLM, content analysis
 - **OpenAI Whisper API** (or local Whisper) — Audio transcription
-- **At least one video generation API** — Veo (Google AI Studio) OR Kling (direct API if available, or Replicate)
+- **fal.ai** — Unified generation API gateway. Single key/billing for: video generation (Kling 3.0 Motion Control Pro, Kling O3 Pro, Veo 3.x) AND lip sync (Sync.so lipsync-2, lipsync-2-pro, sync-3). Pay-per-use, no subscription.
 
 **Required for SaaS:**
 - All MVP dependencies, plus:
@@ -598,18 +644,45 @@ These are speculative until MVP validates and we have real market data.
 - **Monitoring/logging** (Datadog, Sentry, or open-source equivalents)
 
 ### 12.2 Python Library Dependencies
-- `openai` (Whisper API client)
-- `anthropic` (Claude API client)
-- `librosa` (audio analysis)
-- `python-docx` (master `.docx` generation)
-- `requests` / `httpx` (HTTP client for video APIs)
-- `pyyaml` (config)
-- `click` or `typer` (CLI framework)
-- TBD video API client libraries (Google Veo SDK, Kling SDK if available)
 
-### 12.3 Tool Dependencies (User-Side)
+**Backend (local web server):**
+- `fastapi` — Web framework (REST endpoints + WebSocket for progress streaming)
+- `uvicorn` — ASGI server
+- `python-multipart` — File upload handling
+- `pydantic` — Request/response validation
+- `aiofiles` — Async file I/O
+
+**AI / API integration:**
+- `openai` — Whisper API client
+- `anthropic` — Claude API client
+- `fal-client` (or `httpx` against fal.ai REST) — fal.ai integration for video + lip sync
+- `langchain` (optional, evaluate vs direct API calls based on complexity)
+
+**Audio / Media:**
+- `librosa` — Audio analysis (energy, BPM, beat detection)
+- `pydub` or `ffmpeg-python` — Audio slicing / extraction for lip-sync input
+- TBD: vocal separation library if needed (Demucs, Spleeter)
+
+**Knowledge / Storage:**
+- `chromadb` — Vector store for Knowledge Base embeddings and reference profiles (optional — may load KB directly into system prompt instead, evaluate cost/complexity)
+- `sqlite3` (stdlib) or `tinydb` — Lightweight local persistence for project state / conversation history
+
+**Output:**
+- `python-docx` — Master `.docx` generation
+
+**Internal tooling (not user-facing):**
+- `click` or `typer` — CLI framework for internal dev/debug commands
+
+### 12.3 Frontend Dependencies (Local Web UI)
+- Vanilla HTML/CSS/JavaScript at MVP (no heavy framework needed at this scale)
+- Optionally: a light reactive framework (Alpine.js, htmx, or similar) if it simplifies the chat + take-selection UI without adding build-step complexity
+- Web APIs used: MediaRecorder (voice input), Web Audio (preview), Browser TTS (voice output)
+- No Angular / React / Vue at MVP unless complexity demands it
+
+### 12.4 Tool Dependencies (User-Side)
 - Filmora (or compatible NLE) — for final editing post-tool
 - Suno (or equivalent) — for music/vocal generation pre-tool
+- A modern browser (Chrome, Firefox, Safari, Edge — last 2 major versions)
 - File system with sufficient storage (per song, ~500MB–2GB for all clips + reference images)
 
 ---
@@ -619,14 +692,15 @@ These are speculative until MVP validates and we have real market data.
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
 | **Filmora `.wfp` format not crackable** | Medium | Medium | Build fallback to FCP XML / Premiere XML / EDL (standard interchange formats) |
-| **Video API pricing changes mid-build** | Medium | High | Architect for API provider swap-ability; track multiple providers |
-| **Veo/Kling restrict direct API access** | Low | High | Maintain Replicate or similar as fallback channel |
+| **Video/lip sync API pricing changes mid-build** | Medium | High | Architect for API provider swap-ability; track multiple providers via uniform interface |
+| **fal.ai becomes unreliable or removes key models** | Low | High | Maintain ability to fall back to direct Sync.so / direct Kling / direct Veo via uniform interface (FR-8.7) |
 | **LLM costs scale beyond budget on long sessions** | Medium | Medium | Implement conversation summarization at token threshold |
 | **Whisper quality insufficient even for English** | Low | Medium | Strengthen lyrics-required workflow; manual timestamping path |
 | **Generated video quality below user expectations** | Medium | High | POC validation (Manufacturing Consent Verse 2 test) before full build; iterate on prompt engineering in KB |
+| **Lip sync quality insufficient at lipsync-2 level** | Medium | Medium | Upgrade path to lipsync-2-pro or sync-3 (also via fal.ai, configurable per song). Test on early production songs before committing model. |
 | **MVP scope creep delays validation** | Medium | High | Strict scope discipline; defer all SaaS features to Phase 2 |
 | **No SaaS demand even after MVP success** | Medium | Low (MVP value stands alone) | SaaS is upside, not required for MVP justification |
-| **Reference photo APIs change handling (Kling Motion Control)** | Low | Medium | Track API changes; maintain multiple provider integrations |
+| **Reference photo APIs change handling (Kling Motion Control)** | Low | Medium | Track API changes; fal.ai gateway absorbs some breaking changes |
 | **Knowledge Base becomes bloated, drives up token costs** | Medium | Low | Discipline rule already in KB; modular loading path planned for v2 |
 
 ---
@@ -637,38 +711,57 @@ These are speculative until MVP validates and we have real market data.
 
 **Milestone 1 — Foundation (Weeks 1–2)**
 - Project structure, config management
+- FastAPI backend scaffold + local web server bootstrap (browser auto-opens to localhost on startup)
 - Knowledge Base loader
-- CLI scaffold
 - Local storage layout
+- Persistent state model (project list, conversation state)
 
-**Milestone 2 — Analysis Pipeline (Weeks 2–3)**
-- Whisper integration
+**Milestone 2 — Web UI Shell + Conversation (Weeks 2–4)**
+- Minimal HTML/CSS/JS frontend served by FastAPI
+- Chat panel UI (text input + display)
+- Project sidebar (create new song, switch projects)
+- File upload component (MP3, lyrics, reference photos)
+- Claude API conversation flow
+- Knowledge Base injection into system prompt
+- Conversation persistence (state survives browser close)
+- Modeled on the PASC chatbot architecture Rasti previously built
+
+**Milestone 3 — Analysis Pipeline (Weeks 3–5)**
+- Whisper integration (text input first; voice input added in M4)
 - librosa integration
 - Claude content analysis integration
 - Draft Timestamps File generation in canonical format
+- Timestamps File finalization workflow in the UI (section-by-section review and edit)
 
-**Milestone 3 — Conversation Engine (Weeks 3–5)**
-- Claude API conversation flow
-- Knowledge Base injection into system prompt
-- Per-song context injection
-- Timestamps File finalization workflow
-- Chunk definition workflow
+**Milestone 4 — Voice + Chunk Definition (Weeks 4–6)**
+- Voice input via Whisper (microphone button in UI)
+- Optional voice output via browser TTS
+- Per-song context injection into LLM
+- Chunk definition workflow (UI for proposing/redrawing chunks, gathering per-chunk metadata)
 - KB rule override handling
 
-**Milestone 4 — Video Generation (Weeks 5–7)**
-- First video API integration (Veo or Kling)
+**Milestone 5 — Video Generation + fal.ai (Weeks 6–8)**
+- fal.ai integration layer (uniform interface, swappable providers)
 - Per-segment prompt generation with continuity rules
-- Multi-take support
+- Multi-take generation
 - Regeneration support
-- Progress reporting + retry logic
+- Real-time progress streaming to UI (WebSocket or polling)
+- Retry logic and failure handling
 
-**Milestone 5 — Output & Handoff (Weeks 7–8)**
+**Milestone 6 — Take Selection + Lip Sync (Weeks 8–9)**
+- Take selection UI (video grid, click winner)
+- Lip sync integration via fal.ai → Sync.so
+- Vocal isolation pre-step (where needed)
+- Final per-chunk artifact assembly
+
+**Milestone 7 — Output & Handoff (Weeks 9–10)**
 - Output directory organization
 - Filmora project file generation (or fallback format)
 - Master `.docx` generation
+- Output review UI (preview final chunks before export)
 - End-to-end test on a real IronRUST song
 
-**Milestone 6 — Production Validation (Weeks 8–12)**
+**Milestone 8 — Production Validation (Weeks 10–14)**
 - Use tool to complete 3+ IronRUST tracks end-to-end
 - Iterate on KB based on real production lessons
 - Measure success metrics M1–M8
@@ -697,14 +790,16 @@ These are speculative until MVP validates and we have real market data.
 
 These are unresolved requirements that need answers before or during build:
 
-- **Q1** Which video generation API do we integrate first at MVP — Veo, Kling, or Runway? Decision criteria: cost, quality, API access, reference image support.
+- **Q1** ~~Which video generation API do we integrate first at MVP — Veo, Kling, or Runway?~~ **RESOLVED v1.2: fal.ai as unified gateway, access to Kling 3.0 Motion Control Pro, Kling O3 Pro, Veo 3.x, and other models via single API key.**
 - **Q2** Is the Filmora `.wfp` format crackable? Investigation needed. If not, which fallback format (FCP XML / Premiere XML / EDL) imports cleanest into Filmora?
 - **Q3** What's the right pricing model for SaaS — pay-per-generation, subscription tiers, or hybrid? Market research needed.
 - **Q4** Should the conversation LLM use Claude (Anthropic) or GPT (OpenAI) or be user-configurable? Decision criteria: prompt-following quality, cost, context window.
 - **Q5** How do we handle the long-conversation token-cost problem? Summarization strategy needs design.
 - **Q6** Cross-song / album context: should the tool learn from previous songs in the same album (e.g., maintain a project-level memory of past chunk styles, performer choices, etc.)? Possible Phase 1.5 addition.
-- **Q7** Cost ceiling per song — what's the max we accept before requiring explicit user confirmation? $30 is the NFR but maybe lower for MVP testing.
+- **Q7** Cost ceiling per song — $35 is the NFR-C1 ceiling. Acceptable for production, but should we set a stricter MVP-testing ceiling (e.g., $20) with explicit user confirmation for anything above?
 - **Q8** Reference photo guidance: what makes a "good" reference photo? Belongs in API integration spec but worth user-facing guidance too.
+- **Q9** Lip sync model selection: lipsync-2 (basic, ~$0.05/sec) vs lipsync-2-pro (premium, ~$0.083/sec) vs sync-3 (4K + obstruction detection, ~$0.133/sec). Default to lipsync-2 for MVP cost; test lipsync-2-pro on first production song to assess quality delta. Decision driven by close-up performer footage quality requirement.
+- **Q10** Vocal isolation: when user provides MP3 with mixed vocals+instrumental, do we run a vocal separation step (e.g., Demucs, Spleeter) before lip sync, or require user to provide vocals-only stem upfront? Tradeoff: tool complexity vs user friction.
 
 ---
 
