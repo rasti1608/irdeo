@@ -1,5 +1,5 @@
 # IRdeo — Knowledge Base
-**Version:** 1.1
+**Version:** 1.3
 **Last updated:** May 11, 2026
 **Status:** LIVING DOCUMENT — extracted from sessions 04, 05, 06, 07 and ongoing
 
@@ -9,6 +9,12 @@
 - **v2.0** — major restructure or fundamental approach change
 
 ### Changelog
+- **v1.3 (May 11, 2026)** — Workflow simplification pass:
+  - **Terminology change:** "segments" renamed to "subchunks" throughout (matches the user's natural vocabulary). Chunks remain the user-facing ~1-minute units; subchunks are the engine-facing max-8-second units that compose them.
+  - **Take selection removed from MVP scope.** Single generation per subchunk. If a chunk is bad, the user regenerates that specific chunk. Take selection logic is deferred to a future enhancement, not part of the MVP workflow. Section 8 simplified accordingly.
+  - **Lyrics-audio sanity check added** to Section 4 (Question Hierarchy) and Section 13 (Conversation Flow) — when both MP3 and user lyrics are provided in English, compare token overlap and warn if mismatch suggests wrong files were paired.
+  - Section 13 conversation flow simplified — Phase 8 (Take Selection + Lip Sync) collapsed into a single Generation + Lip Sync phase since takes are no longer multi.
+- **v1.2 (May 11, 2026)** — Lip sync architecture added. Section 8 (Performer Integration Rules) now mandates automatic lip sync wherever performer appears. Section 10 (Audio-to-Visual Translation) corrected — text-to-video engines don't accept external audio, lip sync is a separate downstream post-process step. Section 13 (Conversation Flow Pattern) Phase 7 expanded with explicit lip-sync pass. Section 14 updated. fal.ai locked as unified generation gateway (video + lip sync via one API key, pay-per-use, no subscription).
 - **v1.1 (May 11, 2026)** — Product renamed from "IronRUST Video Studio" to **IRdeo**. Coined name preserving the "IR" origin (IronRUST) with the "deo" suffix (audio/video/media family). No content changes beyond naming.
 - **v1.0 (May 11, 2026)** — Renumbered from v0.3 to reflect that the document is a complete formal version, not a tentative pre-release. No content changes from v0.3.
 - **v0.3 (May 11, 2026, pre-v1.0)** — Added "KB Rules Are Defaults, Not Absolutes" principle to Section 0 (user override handling). Added Vocal Type Vocabulary to Section 2 (canonical sub-marker list). Added Unknown Genre Handling to Section 7 as new 7.3 (session-level temporary playbook flow); old 7.3 placeholder renumbered to 7.4.
@@ -87,7 +93,7 @@ LLM APIs are stateless — every API call must include everything the model need
 
 ## 2. The Timestamps File — Canonical Per-Song Artifact [LOCKED]
 
-The Timestamps File is the **single source of truth** for everything about a song's structure. Once finalized, it is loaded into every conversation API call for that song's session as part of the Song Context. All chunk definitions, prompt generation, and segment decomposition reference back to this file.
+The Timestamps File is the **single source of truth** for everything about a song's structure. Once finalized, it is loaded into every conversation API call for that song's session as part of the Song Context. All chunk definitions, prompt generation, and subchunk decomposition reference back to this file.
 
 Without it, the LLM is writing prompts blind — doesn't know what lyric is at 2:14, doesn't know that 2:43–3:05 is the female bridge, doesn't know where Verse 2 ends. With it, the LLM can reference exact moments and write prompts that lock precisely to the song.
 
@@ -226,12 +232,13 @@ Every song is decomposed into two distinct layers. The tool MUST maintain this d
 - Example: Manufacturing Consent (4:45) was decomposed into 9 chunks
 - Chunk definitions stored in the chunk manifest, separate from the Timestamps File
 
-### Layer 2: API Segments (Engine-Facing)
+### Layer 2: Subchunks (Engine-Facing)
 - Maximum duration: 8 seconds (hard ceiling on current video APIs — Veo, Kling)
-- Each chunk auto-decomposes into 7–8 API segments
+- Each chunk auto-decomposes into 7–8 API subchunks
 - The user **never sees these** — they exist only at the generation layer
-- The AI Director writes each segment's prompt independently but **continuity-aware** (eyeline, lighting, color grade carry across the chunk)
-- Segments can be variable length (8, 6, 4 seconds) depending on what lands best for the lyrical beat
+- The AI Director writes each subchunk's prompt independently but **continuity-aware** (eyeline, lighting, color grade carry across the chunk)
+- Subchunks can be variable length (8, 6, 4 seconds) depending on what lands best for the lyrical beat
+- File naming convention: `{chunk_number}_{subchunk_letter}_*.mp4` (e.g., `01_a_intro.mp4`, `01_b_intro.mp4`, `02_a_verse.mp4`) — flat, sortable, identifiable in any file browser or editing tool
 
 ### Chunking Rules
 - Never split a chunk mid-word
@@ -252,6 +259,18 @@ The tool's conversation MUST follow this priority order when gathering input. Do
 ### Tier 2 — Strongly Recommended (tool works but worse without)
 - **Exact lyrics from user** — enables a finalized Timestamps File (see Section 2). Without user-provided lyrics, the tool falls back to Whisper-only transcription, which garbles names and proper nouns and often produces unusable output over heavy instrumentation. The tool MUST flag the quality tradeoff explicitly if user skips: "Without lyrics, the Timestamps File will be Whisper-only and may need significant manual correction."
 - **Performer reference photos** — required only if a performer will appear on screen in any chunk. 3–4 photos per character is the API standard.
+
+### Lyrics ↔ Audio Sanity Check [LOCKED]
+
+When the user provides BOTH an MP3 and exact lyrics AND the audio language is English (Whisper-reliable), the tool MUST compare the Whisper transcript against the provided lyrics and warn if they appear mismatched. This catches a real production hazard: user uploads the wrong audio file or pastes lyrics from a different song, system spends compute on analysis, user discovers the mismatch only at the Timestamps File review step — wasted time and cost.
+
+Mechanism:
+1. After Whisper completes, compute token-overlap ratio between Whisper output and user lyrics
+2. Threshold: ~25% overlap minimum (generous, accounts for Whisper imperfection)
+3. Skip this check entirely for non-English audio (Whisper output unreliable, comparison would produce false positives)
+4. If below threshold, surface a gentle warning (NOT a hard block): *"I'm having trouble matching your lyrics to this audio — is this the right combination? You can proceed if you're sure, or upload a different file."*
+
+The check is advisory. User can override and proceed. The warning's purpose is to save the user from accidental wrong-file mistakes, not to gatekeep.
 
 ### Tier 3 — Confirmation-with-Suggestion (AI detects, user confirms or overrides)
 - Section breakdown (intro / verse / hook / bridge / outro / etc.) — as detected and proposed in the draft Timestamps File
@@ -395,17 +414,40 @@ Lessons hard-earned from the Manufacturing Consent Verse 2 iteration.
 ### Default Heuristic
 If unsure, default to NO performer. Adding performer at one wrong moment is worse than missing them at one right moment.
 
+### Performer Implies Lip Sync — MANDATORY
+
+**Wherever the performer appears on screen, lip sync MUST be applied. No opt-in, no per-chunk toggle, no exceptions.** The reasoning is simple: a performer on screen exists to be rapping/singing the lyrics. Performance without lip sync is just stock footage of a person moving their mouth — visually wrong and instantly noticeable.
+
+The tool MUST:
+1. Detect chunks (or subchunks within chunks) where the performer is present, based on the chunk manifest
+2. After silent video generation completes for those chunks, automatically queue a lip-sync pass
+3. Feed the silent generated video + the relevant slice of the user's audio (the time-aligned section from the original MP3, vocals isolated where applicable — see Section 10) to the lip-sync model
+4. Replace the silent video with the lip-synced version in the output organization
+5. Never present a performer-on-screen chunk to the user without lip sync applied
+
+### Bad Output: Regenerate, Don't Cherry-Pick
+
+When a chunk's generated output is unsatisfactory, the user regenerates that specific chunk. The tool does NOT generate multiple takes for the user to cherry-pick between — generation produces ONE result per chunk, period. This keeps the file system flat, the UI simple, and the workflow predictable.
+
+If the regenerated output is still bad, the user can:
+- Regenerate again (different seed, same prompt)
+- Adjust the chunk's prompt or settings, then regenerate
+- Choose a different model for that chunk and regenerate
+- Accept the imperfect output and plan to fix it in Filmora
+
+Take selection (multiple generations presented for user choice) is **not in MVP scope**. It remains a possible future enhancement if regeneration alone proves insufficient in practice.
+
 ---
 
 ## 9. Continuity Rules Within a Chunk [LOCKED]
 
-A chunk is one user-facing unit, but it's generated as 7–8 separate API segments. The Director must write segment prompts that, when stitched, feel like one continuous moment.
+A chunk is one user-facing unit, but it's generated as 7–8 separate API subchunks. The Director must write subchunk prompts that, when stitched, feel like one continuous moment.
 
-### Continuity Elements That Must Hold Across Segments
-- **Performer eyeline and position** — if they're looking at camera in segment 1, they're looking at camera in segment 2 (unless the lyric calls for a shift)
+### Continuity Elements That Must Hold Across Subchunks
+- **Performer eyeline and position** — if they're looking at camera in subchunk 1, they're looking at camera in subchunk 2 (unless the lyric calls for a shift)
 - **Lighting** — same source direction, same intensity (gradual shifts allowed)
 - **Color grade** — never reset mid-chunk
-- **Location/setting** — if establishing a boardroom in segment 1, stay in or near the boardroom for the chunk (unless intentional jump)
+- **Location/setting** — if establishing a boardroom in subchunk 1, stay in or near the boardroom for the chunk (unless intentional jump)
 - **Mood register** — don't oscillate; build or hold
 
 ### When Discontinuity Is Intentional
@@ -414,17 +456,23 @@ A chunk is one user-facing unit, but it's generated as 7–8 separate API segmen
 - Bridge sections that intentionally step outside the verse aesthetic
 
 ### Implementation
-Each segment prompt includes a brief continuity carry-over note ("performer continues from previous segment, same eyeline, same boardroom setting") so the engine knows what state to inherit even though it has no memory between calls.
+Each subchunk prompt includes a brief continuity carry-over note ("performer continues from previous subchunk, same eyeline, same boardroom setting") so the engine knows what state to inherit even though it has no memory between calls.
 
 ---
 
 ## 10. Audio-to-Visual Translation [LOCKED]
 
 ### Core Truth
-**The video generation engine never hears the audio.** It generates silent visual clips from text prompts. Audio is attached afterward in Filmora.
+**Text-to-video generation engines never accept external audio as input.** Models like Kling and Veo accept text prompts (and optionally reference images), generate silent visuals (or in Veo's case, generate their own internal audio that we discard), and never read the user's audio file. Audio is attached afterward in Filmora — except for the lip sync step (see below).
 
-### Implication
-Every musical quality the visual needs to "match" must be **described in text** in the prompt. The engine has no other channel.
+### "Native Lip Sync" in Video Models — Why It Doesn't Help IRdeo
+
+Some video models (notably Veo 3 / 3.1) advertise "native lip sync." This means the model generates dialogue audio + matching mouth movements together from a text prompt. It does NOT mean the model can sync a character's lips to your existing audio file. The dialogue is invented by the model from prompt text, the lips match that invented dialogue, and there is no input channel for external audio.
+
+For IRdeo, this is irrelevant. We have pre-existing Suno-generated vocals. We need the character's mouth to match THAT audio, not audio Veo invents. Any audio the video model generates is discarded; only the visuals are kept. Lip sync is handled as a separate downstream step (see below).
+
+### Implication for Prompt Generation
+Every musical quality the visual needs to "match" must be **described in text** in the video generation prompt. The engine has no other channel for understanding the song.
 
 ### Translation Vocabulary
 - "Slow, mournful, 60 BPM, female voice with reverb" → "visuals should breathe, hold, slow camera moves, long takes"
@@ -433,7 +481,23 @@ Every musical quality the visual needs to "match" must be **described in text** 
 - "Bombastic, anthemic, peak energy" → "wide shots, dramatic lighting, sweeping camera, large-scale imagery"
 
 ### Rule
-Always include explicit pacing / energy / mood language in every segment prompt. Never assume the engine will "feel" the music.
+Always include explicit pacing / energy / mood language in every subchunk prompt. Never assume the engine will "feel" the music.
+
+### Lip Sync — Separate Downstream Step
+
+Lip sync IS the one place in the pipeline where the user's actual audio is fed into a model. This happens AFTER video generation, on a separate API call to a dedicated lip-sync model:
+
+```
+Input:  silent generated video (from Kling/Veo) + audio slice (from user's MP3)
+Model:  Sync.so lipsync-2 (via fal.ai)
+Output: video where character's mouth matches the actual audio
+```
+
+This step applies ONLY to chunks/subchunks where the performer is on screen (per Section 8 mandate). Documentary/atmosphere/no-performer subchunks skip lip sync entirely.
+
+**Vocal isolation:** Lip sync models work best when the input audio is vocals-only (no instrumental). The tool SHOULD isolate the vocal track from the user's MP3 before sending to the lip-sync model. Since users typically generate vocals via Suno separately from instrumentation anyway, this is often already available. If not, the tool should run vocal isolation as a pre-step.
+
+**Unified API gateway:** IRdeo accesses both video generation (Kling, Veo) AND lip sync (Sync.so models) through **fal.ai** — a single API key, single billing relationship, pay-per-use with no subscription. See API Integration Spec (to be written) for full details.
 
 ---
 
@@ -508,35 +572,49 @@ The order in which the AI Director conducts the user interview matters. This is 
 5. Run Whisper transcription (or skip if non-English + user provided lyrics)
 6. Run librosa analysis for energy curve, BPM, beat positions
 7. Run Claude content analysis on transcript for sections, vocal types, mood
-8. Assemble draft Timestamps File in canonical format (Section 2)
+8. **Lyrics ↔ Audio Sanity Check** (Section 4): if both lyrics and English MP3 provided, compare Whisper output to user lyrics; warn if mismatch detected
+9. Assemble draft Timestamps File in canonical format (Section 2)
 
 ### Phase 3: Timestamps File Finalization
-9. If user provided lyrics, correct Whisper output against them and log corrections
-10. Present draft Timestamps File to user — section by section, vocal type per section, energy map
-11. User confirms or corrects (lyrics, section boundaries, vocal types)
-12. **Finalize and lock** Timestamps File. From here forward, it loads into every conversation API call as Song Context (Section 1).
+10. If user provided lyrics, correct Whisper output against them and log corrections
+11. Present draft Timestamps File to user — section by section, vocal type per section, energy map
+12. User confirms or corrects (lyrics, section boundaries, vocal types)
+13. **Finalize and lock** Timestamps File. From here forward, it loads into every conversation API call as Song Context (Section 1).
 
 ### Phase 4: Chunk Definition
-13. Propose chunk boundaries based on the finalized Timestamps File
-14. User confirms or redraws
-15. For each chunk, ask: performer presence, named visuals, mood, style references
-16. Store chunk definitions in chunk manifest (separate from Timestamps File — see Section 2)
+14. Propose chunk boundaries based on the finalized Timestamps File
+15. User confirms or redraws
+16. For each chunk, ask: performer presence, named visuals, mood, style references
+17. Store chunk definitions in chunk manifest (separate from Timestamps File — see Section 2)
 
 ### Phase 5: Reference Research (if user names references)
-17. Background research on named artists/songs (Section 6)
-18. Present learnings to user for grounding
-19. Use learnings to refine chunk-level questions
+18. Background research on named artists/songs (Section 6)
+19. Present learnings to user for grounding
+20. Use learnings to refine chunk-level questions
 
 ### Phase 6: Prompt Generation (background)
-20. AI Director writes full prompt per chunk
-21. AI Director decomposes each chunk into 8-sec API segments with continuity-aware prompts (Section 9)
-22. User never sees these prompts unless they ask ("show me the prompt for chunk 4")
+21. AI Director writes full prompt per chunk
+21. AI Director writes full prompt per chunk
+22. AI Director decomposes each chunk into 8-sec subchunks with continuity-aware prompts (Section 9)
+23. User never sees these prompts unless they ask ("show me the prompt for chunk 4")
 
-### Phase 7: Generation & Output
-23. Fire API calls per segment using the appropriate model per chunk (Section 11)
-24. Organize output (chunks folder, takes per chunk)
-25. Generate Filmora project file with all clips placed on timeline
-26. Generate master `.docx` document (Suno prompt, production notes, album context, lyrics, video prompts, Whisper corrections)
+### Phase 7: Output Path Selection — User Choice
+At this point, prompts exist for every chunk. The user picks one of two output paths:
+- **Path A — Download Prompt Pack:** zip file with one text file per chunk containing the engineered prompt. User takes these elsewhere (AIVideo.com, direct API, manual workflow). No generation happens in IRdeo. Power-user export option, not the primary path.
+- **Path B — Generate Everything (default):** proceed to Phase 8 for full automated generation pipeline.
+
+### Phase 8: Generation & Lip Sync (Path B only)
+24. Fire API calls per subchunk via fal.ai using the appropriate model per chunk (Section 11). One generation per subchunk; no multiple takes.
+25. If a chunk's output is unsatisfactory, the user regenerates that specific chunk (different seed, prompt tweak, or different model). Repeat as needed.
+26. For performer chunks: feed the generated video + corresponding audio slice (vocals-isolated where applicable) to lip-sync model via fal.ai (Section 10).
+27. Replace silent video with lip-synced version in output.
+28. Non-performer chunks skip the lip-sync step entirely.
+
+### Phase 9: Final Output (Path B only)
+29. Generate preview MP4 via ffmpeg stitch of all chunks (user reviews in browser before opening Filmora)
+30. Generate Filmora project file with all clips placed on timeline
+31. Generate master `.docx` document (Suno prompt, production notes, album context, lyrics, video prompts, Whisper corrections)
+32. Partial generation note: the Filmora project + master `.docx` are produced only when ALL chunks for the song are generated. For partial work (regenerated a few chunks, not the full song), the user manually imports clips into Filmora using the flat naming convention (`01_a_*.mp4`, `01_b_*.mp4`, etc.).
 
 ---
 
@@ -548,6 +626,7 @@ Explicit non-goals. Encoded here to prevent scope creep and confused user expect
 - **Transitions between chunks** — Out of scope. Raw output. User handles transitions in Filmora.
 - **Effects (VHS, RGB, overlays)** — Out of scope. Raw output. User handles in Filmora.
 - **Music generation** — Out of scope. User generates audio via Suno or other tools first.
+- **Music video models' native audio generation** — Out of scope. Veo and similar models may generate their own audio when producing video; that audio is always discarded. We use only the visuals from video generation; user-provided audio drives lip sync separately (Section 10).
 - **Final video export** — Out of scope. Tool outputs raw chunks + Filmora project. User opens Filmora and exports.
 - **Hand-holding beginners** — Tool is for power users who know editing. UX assumes user understands the workflow.
 

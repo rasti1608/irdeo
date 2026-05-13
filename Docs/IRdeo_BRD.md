@@ -1,8 +1,8 @@
 # IRdeo — Business Requirements Document
-**Version:** 1.3
+**Version:** 1.4
 **Last updated:** May 11, 2026
 **Status:** LIVING DOCUMENT — comprehensive formal version
-**Companion documents:** `IRdeo_Knowledge_Base.md` (v1.2+)
+**Companion documents:** `IRdeo_Knowledge_Base.md` (v1.3+)
 
 ### Versioning Convention
 - **v1.0** — first complete formal version
@@ -10,6 +10,13 @@
 - **v2.0** — major restructure or fundamental approach change
 
 ### Changelog
+- **v1.4 (May 11, 2026)** — Workflow simplification pass. Companion: KB v1.3.
+  - **Terminology change:** "segments" renamed to "subchunks" throughout (matches KB v1.3 vocabulary). Chunks are user-facing ~1-minute units; subchunks are engine-facing max-8-second units.
+  - **Take selection removed from MVP scope.** Single generation per subchunk. Bad chunk → user regenerates. US-28a removed, US-28b retained, FR-8.9 through FR-8.13 simplified/dropped.
+  - **Prompt Pack Export added** as power-user MVP feature. Two output paths after the conversation: (A) download prompts as zip — secondary path; (B) full generation — primary path. New US-29a, new FR-9.X.
+  - **Lyrics-audio sanity check added.** New FR for warning users when Whisper transcript and provided lyrics don't appear to match (English audio only, advisory not blocking).
+  - **Flat file naming convention** for output clips: `{chunk}_{subchunk_letter}_*.mp4` (e.g., `01_a_intro.mp4`). Enables partial generation workflow and easy manual Filmora import.
+  - **Filmora project file requires complete song.** For partial generation (subset of chunks), user imports clips manually using naming convention.
 - **v1.3 (May 11, 2026)** — User interface vision corrected. IRdeo's primary user interface is a **local web UI** (browser-based, served by local Python process), NOT a CLI. CLI is internal implementation/dev tooling, not user-facing. Phase 2 SaaS = same web UI, hosted instead of local. Updates: Section 1.3 companion docs (CLI Spec → UI Spec), Section 2.2 (phasing strategy clarified), Section 6.1 (CLI Interface → User Interface), Section 6.2 (SaaS UI clarified as hosted version of same UI), Section 6.4 (deferred items corrected), Section 7 (US-5 revised + new US-5a, US-5b for local web UI), Section 8.11 (FR-11 block rewritten), Section 12.2 (Python dependencies updated with FastAPI/Uvicorn), Section 14.1 (roadmap milestones revised to include web UI build).
 - **v1.2 (May 11, 2026)** — Lip sync added as mandatory MVP capability for performer chunks. fal.ai locked as unified generation gateway (video + lip sync, single API key, pay-per-use). Updates: Section 6.1 scope (lip sync added to Video Generation), Section 7 user stories (take selection + automatic lip sync added), Section 8 functional requirements (new FR-8.X entries for lip sync provider integration and take selection workflow), Section 9.6 cost ceiling adjusted to account for lip sync costs, Section 12.1 dependencies (fal.ai added, Sync.so as model provider via fal.ai), Section 13 risks (lip sync quality variance row added), Section 15 open questions revised.
 - **v1.1 (May 11, 2026)** — Product renamed from "IronRUST Video Studio" to **IRdeo**. Coined name preserving the "IR" origin (IronRUST) with the "deo" suffix (audio/video/media family). All in-text references updated. Companion document filename reference updated.
@@ -209,23 +216,37 @@ The tool is NOT designed for:
 - Retry logic on API failure
 - Generation progress tracking
 
-**Take Selection & Lip Sync:**
-- Take selection UI/workflow — present takes per performer chunk to user, user picks the winner
-- Automatic lip sync (mandatory, no opt-in) on performer chunks via fal.ai → Sync.so lipsync-2 model
-- Vocal track isolation (where possible) before lip sync for best results
+**Lip Sync (mandatory on performer chunks):**
+- Automatic lip sync (no opt-in, no toggle) on every chunk where the performer appears on screen, via fal.ai → Sync.so lipsync-2 model
+- Vocal track isolation via Lalal.ai (cloud, not local) before lip sync for best results
 - Non-performer chunks skip lip sync entirely
 
-**Output:**
+**Regeneration Workflow:**
+- One generation per subchunk (no take selection, no multiple takes for cherry-picking)
+- If a chunk's output is unsatisfactory, user regenerates that specific chunk (different seed, prompt adjustment, or different model)
+- Partial generation supported (regenerate single chunks, generate subset of chunks)
+
+**Output — Two Paths:**
+
+**Path A — Prompt Pack Export (power-user export option, secondary placement):**
+- After the conversation completes and prompts are generated for every chunk, the user can download a zip file containing one text file per chunk with the engineered prompt
+- No video generation, no lip sync, no Filmora project — just the prompts
+- Use case: user wants to take the engineered prompts to AIVideo.com, paste directly into model providers, or compare against other tools
+- Accessible from a secondary menu option, not the primary "next step" button
+
+**Path B — Full Generation (primary path):**
 - Organized output directory per song
-  - chunks/ folder with subdirectory per chunk
-  - Multiple takes per chunk
+  - chunks/ folder with one clip per chunk (after generation + lip sync where applicable)
+  - Flat file naming: `{chunk}_{subchunk_letter}_*.mp4` (e.g., `01_a_intro.mp4`, `01_b_intro.mp4`, `02_a_verse.mp4`)
   - reference_images/ subdirectory
-  - prompts/ subdirectory (JSON of all generated prompts)
+  - prompts/ subdirectory (JSON of all generated prompts, also part of Path A zip)
   - timestamps file (finalized)
   - chunk manifest (JSON)
   - generation log
-- Filmora project file generation (or fallback interchange format if `.wfp` not crackable)
-- Master `.docx` document with Suno prompt, production notes, album context, lyrics, video prompts, Whisper corrections
+- Preview MP4 via ffmpeg stitch of all chunks (inline preview before opening Filmora)
+- Filmora project file generation (or fallback interchange format if `.wfp` not crackable) — **only when ALL chunks for the song are complete**
+- Master `.docx` document with Suno prompt, production notes, album context, lyrics, video prompts, Whisper corrections — **only on complete song**
+- For partial generation (subset of chunks completed), user imports clips manually into Filmora using the flat naming convention
 
 **User Interface:**
 - Local web UI served by a FastAPI Python backend running on the user's machine
@@ -348,6 +369,8 @@ Stories are grouped by capability area and tagged with phase (MVP / SaaS / BOTH)
 
 **US-11 [BOTH]** As a user, I want the finalized Timestamps File saved as a markdown file in my project directory so I can reference it outside the tool if needed.
 
+**US-11a [BOTH]** As a user, if I accidentally upload the wrong MP3 or paste lyrics from the wrong song, I want the tool to warn me early — after Whisper transcription, before I waste time reviewing a Timestamps File that's fundamentally mismatched. The warning is advisory (I can dismiss and proceed if I know what I'm doing).
+
 ### 7.3 Chunk Definition & Collaboration
 
 **US-12 [BOTH]** As a user, I want the tool to propose chunk boundaries based on my finalized Timestamps File so I have a starting structure without manual work.
@@ -378,7 +401,7 @@ Stories are grouped by capability area and tagged with phase (MVP / SaaS / BOTH)
 
 **US-23 [BOTH]** As a user, I want to fire video generation for all chunks with a single command (`generate`) and have the tool orchestrate all the API calls.
 
-**US-24 [BOTH]** As a user, I want to specify how many takes per chunk (default 2–3) so I can cherry-pick the best clips later.
+**US-24 [BOTH]** As a user, I want one generation per subchunk (no multi-take cherry-picking). If a chunk's output is bad, I want to regenerate that specific chunk with adjustments, not pick between pre-generated alternatives.
 
 **US-25 [BOTH]** As a user, I want to regenerate a specific chunk (e.g., `regenerate --chunk 5 --takes 2`) without re-running the whole song so I don't waste API credits on already-good chunks.
 
@@ -388,7 +411,7 @@ Stories are grouped by capability area and tagged with phase (MVP / SaaS / BOTH)
 
 **US-28 [BOTH]** As a user, I want failed API calls to retry automatically (with backoff) and fall back to an alternate provider if available so I'm not blocked by transient failures.
 
-**US-28a [BOTH]** As a user, I want to review all takes for each performer chunk and pick the winning take before lip sync runs so I don't waste API spend on takes I'm going to discard.
+**US-28a [BOTH]** As a user, I want to regenerate a specific chunk after seeing the output (different seed, prompt adjustment, or different model) so I can iterate on quality without re-running the whole song.
 
 **US-28b [BOTH]** As a user, I want lip sync to run automatically on every performer chunk (no toggle, no opt-in) so my performer's mouth always matches the actual song audio — performance without lip sync is broken output.
 
@@ -398,9 +421,13 @@ Stories are grouped by capability area and tagged with phase (MVP / SaaS / BOTH)
 
 ### 7.6 Output & Handoff
 
-**US-29 [BOTH]** As a user, I want all output organized in a predictable directory structure per song so I can find any chunk, any take, any reference photo, any prompt later.
+**US-29 [BOTH]** As a user, I want all output organized in a predictable directory structure per song with a flat naming convention (`01_a_*.mp4`, `01_b_*.mp4`, `02_a_*.mp4`, etc.) so I can find any chunk, sort and select clips easily for manual Filmora import, and identify what's what at a glance.
 
-**US-30 [BOTH]** As a user, I want a Filmora project file generated automatically with all clips placed on the timeline in order, audio track attached, and multiple takes stacked on separate video tracks, so I can open Filmora and immediately start editing.
+**US-29a [BOTH]** As a user, I want a "Download Prompt Pack" option available after the conversation completes — get a zip file with one text file per chunk containing the engineered prompt — so I can take the prompts to AIVideo.com or other tools without committing to IRdeo's generation pipeline. This is a secondary path; primary path is full generation.
+
+**US-30 [BOTH]** As a user, I want a Filmora project file generated automatically with all clips placed on the timeline in order, audio track attached — **only when ALL chunks for the song are complete**. For partial work, I'll import clips manually using the flat naming convention.
+
+**US-30a [BOTH]** As a user, after generation completes, I want to preview the stitched video (all chunks in sequence with audio) in the browser via a built-in player BEFORE I open Filmora, so I can decide if any chunk needs regeneration.
 
 **US-31 [BOTH]** As a user, if the Filmora `.wfp` format proves uncrackable, I want a fallback interchange format (FCP XML / Premiere XML / EDL) generated instead so I can still import into Filmora (or other editing software) with some manual setup.
 
@@ -439,6 +466,7 @@ Numbering: **FR-X.Y** where X is the capability area and Y is the requirement nu
 - **FR-2.2** The tool MUST run librosa-based audio analysis producing BPM, energy curve (2-second resolution), beat positions, brightness, and percussive intensity.
 - **FR-2.3** The tool MUST run Claude content analysis on transcript to detect sections, vocal types, mood arc.
 - **FR-2.4** The tool MUST produce a draft Timestamps File in the canonical format defined in Knowledge Base Section 2.
+- **FR-2.5** When both MP3 and user lyrics are provided AND audio language is English, the tool MUST perform a token-overlap comparison between Whisper transcript and user lyrics (threshold ~25%) and surface a non-blocking warning if mismatch is detected. Skip the check for non-English audio.
 
 ### 8.3 Timestamps File Management (FR-3.X)
 - **FR-3.1** The tool MUST present the draft Timestamps File to the user section by section for confirmation.
@@ -480,28 +508,30 @@ Numbering: **FR-X.Y** where X is the capability area and Y is the requirement nu
 ### 8.8 Video Generation (FR-8.X)
 - **FR-8.1** The tool MUST integrate with **fal.ai** as the unified generation API gateway for video generation at MVP. fal.ai provides access to Kling 3.0 Motion Control Pro, Kling O3 Pro, Veo 3.x, and other video models via a single API key.
 - **FR-8.2** The tool MUST support per-chunk model selection.
-- **FR-8.3** The tool MUST support configurable takes per chunk (default 2–3) — silent video only.
+- **FR-8.3** The tool MUST produce ONE generation per subchunk (no multi-take cherry-picking). If output is unsatisfactory, the user regenerates the chunk.
 - **FR-8.4** The tool MUST support regeneration of specific chunks without re-running the full song.
 - **FR-8.5** The tool MUST report generation progress in real time.
 - **FR-8.6** The tool MUST retry failed API calls with exponential backoff (configurable max retries).
 - **FR-8.7** The tool MUST be architected so video API providers can be swapped via a uniform interface (avoiding fal.ai lock-in if needed).
-- **FR-8.8** When using video models with native audio generation (e.g., Veo), the tool MUST discard the generated audio and use only the visual track. User-provided audio drives lip sync separately (FR-8.9 block).
+- **FR-8.8** When using video models with native audio generation (e.g., Veo), the tool MUST discard the generated audio and use only the visual track. User-provided audio drives lip sync separately (FR-8.X lip sync block).
 
-### 8.8a Take Selection & Lip Sync (FR-8.X continued)
-- **FR-8.9** The tool MUST present takes for each performer chunk to the user for review and selection BEFORE lip sync runs (cost discipline — avoid lip-syncing discarded takes).
-- **FR-8.10** The tool MAY provide a heuristic-based default-take selection if user opts to skip manual review.
-- **FR-8.11** The tool MUST automatically run lip sync on every performer chunk's winning take. No per-chunk toggle. No opt-in. Performance implies lip sync per KB Section 8.
-- **FR-8.12** The tool MUST integrate lip sync via fal.ai → Sync.so lipsync-2 model (default) with the ability to swap to alternative lip-sync models (Sync.so lipsync-2-pro, sync-3) via configuration.
-- **FR-8.13** The tool MUST skip lip sync entirely on chunks without performer presence (documentary, atmosphere, no-performer).
-- **FR-8.14** The tool SHOULD isolate vocals from the instrumental track before passing audio to the lip-sync model. If a vocals-only stem is provided by the user (typical with Suno output), use it directly.
-- **FR-8.15** The tool MUST output lip-synced video as the final per-chunk artifact for performer chunks — the silent generation is intermediate and not delivered as final output.
+### 8.8a Lip Sync (FR-8.X continued)
+- **FR-8.9** The tool MUST automatically run lip sync on every performer chunk's generated video. No per-chunk toggle. No opt-in. Performance implies lip sync per KB Section 8.
+- **FR-8.10** The tool MUST integrate lip sync via fal.ai → Sync.so lipsync-2 model (default) with the ability to swap to alternative lip-sync models (Sync.so lipsync-2-pro, sync-3) via configuration.
+- **FR-8.11** The tool MUST skip lip sync entirely on chunks without performer presence (documentary, atmosphere, no-performer).
+- **FR-8.12** The tool SHOULD isolate vocals from the instrumental track before passing audio to the lip-sync model via Lalal.ai (cloud, not local). If a vocals-only stem is provided by the user (typical with Suno output), use it directly.
+- **FR-8.13** The tool MUST output lip-synced video as the final per-chunk artifact for performer chunks — the silent generation is intermediate and not delivered as final output.
 
 ### 8.9 Output (FR-9.X)
 - **FR-9.1** The tool MUST organize output in a predictable directory structure per song (chunks/, reference_images/, prompts/, timestamps file, chunk manifest, generation log).
-- **FR-9.2** The tool MUST generate a Filmora project file with all clips on the timeline, audio attached, takes on separate video tracks.
-- **FR-9.3** If Filmora `.wfp` format is not viable, the tool MUST generate a fallback interchange format (FCP XML / Premiere XML / EDL).
-- **FR-9.4** The tool MUST generate a master `.docx` document at song completion containing Suno prompt, production notes, album context, lyrics, video prompts, Whisper corrections.
-- **FR-9.5 [SaaS]** The tool MUST allow user to download all project files as a single zip.
+- **FR-9.2** The tool MUST use a flat naming convention for final clips: `{chunk_number}_{subchunk_letter}_*.mp4` (e.g., `01_a_intro.mp4`, `01_b_intro.mp4`, `02_a_verse.mp4`). Sortable, identifiable, manually-importable into any editing tool.
+- **FR-9.3** The tool MUST generate a Filmora project file with all clips on the timeline, audio attached, ONLY when ALL chunks for the song are complete. Partial songs do not produce a Filmora project file; the user imports clips manually using the naming convention.
+- **FR-9.4** If Filmora `.wfp` format is not viable, the tool MUST generate a fallback interchange format (FCP XML / Premiere XML / EDL).
+- **FR-9.5** The tool MUST generate a master `.docx` document at full song completion containing Suno prompt, production notes, album context, lyrics, video prompts, Whisper corrections.
+- **FR-9.6** The tool MUST generate a preview MP4 (ffmpeg-stitched, no transitions) for inline browser playback BEFORE the user opens Filmora. Preview is rebuildable on demand after chunk regeneration.
+- **FR-9.7** The tool MUST provide a "Download Prompt Pack" option after the conversation completes and prompts are generated — produces a zip file with one text file per chunk containing the engineered prompt. This is a power-user export option (Path A), accessible from a secondary menu, not the primary "next step" button. Path A skips generation entirely.
+- **FR-9.8** Lyrics-audio sanity check: when user provides BOTH MP3 and exact lyrics AND audio language is English, the tool MUST compare Whisper transcript against user lyrics (token overlap, ~25% minimum) and surface a gentle warning if mismatch suggests wrong files were paired. Warning is advisory, not blocking. Skip the check entirely for non-English audio.
+- **FR-9.9 [SaaS]** The tool MUST allow user to download all project files as a single zip.
 
 ### 8.10 Conversation & State (FR-10.X)
 - **FR-10.1** The tool MUST load the Knowledge Base into every conversation LLM API call as part of the system prompt.
